@@ -15,14 +15,20 @@
 #   meson setup build-meson --cross-file cross/x86_64-cact-clang.ini
 #   ninja -C build-meson            # the two .so files
 #   ninja -C build-meson smoke      # a C++ program linked against them
-#   ninja -C build-meson stage      # into LocalRepo (lib/, include/c++/v1)
+#   ninja -C build-meson stage      # the two .so files into LocalRepo lib/
 #   ninja -C build-meson pkg        # repo/libcxx-<ver>.cpkg
 #
-# The C++ headers install into <prefix>/include/c++/v1, upstream's own layout,
-# and not flat into /usr/include: libc++ ships <string.h>, <stdio.h>, <stdlib.h>,
+# libc++ is not in the image yet: nothing in it is C++ (the compositor is
+# deferred), so staging it would only add weight.  The two targets above are the
+# port's own deployment path — a manual run now, and what the image will call
+# when a C++ consumer lands.  The C++ headers are build-time only and stay in
+# this tree, where a host consumer (LLVM, Mesa) is pointed by explicit path —
+# the same wiring the other ports use instead of pkg-config.
+#
+# When the headers are used they have to be searched as <prefix>/include/c++/v1
+# and not flat in /usr/include: libc++ ships <string.h>, <stdio.h>, <stdlib.h>,
 # <math.h> and <errno.h> as wrappers that #include_next the C library's, and
-# installing them beside CactLibc's own headers would have them overwrite each
-# other.  A consumer searches /usr/include/c++/v1 first, then /usr/include.
+# alongside CactLibc's own headers they would overwrite each other.
 #
 # Configuration lives in cact/__config_site (a hand-written replacement for the
 # file upstream's CMake generates) and the locale shim in
@@ -315,29 +321,18 @@ endif
 # Stage into the image tree and build the package
 # ------------------------------------------------------------------------------
 
-# Two destinations: @LIBDIR@ is where the two .so files go, @ROOT@ is the tree
-# whose include/c++/v1 takes the headers.  For the stage target both are the
-# image's lib dir (→ /usr/lib and /usr/include); for the package payload @ROOT@
-# is the package root and the files sit under lib/ — cactpkg installs a package
-# under /usr, and its default prefix /usr/local is not on ld.so's search path.
-# __config_site.in and the include CMakeLists.txt are upstream build inputs, not
-# headers, and would only confuse a compiler that found them.
-_copy_tpl = (
-  'set -e; mkdir -p "@LIBDIR@" "@ROOT@/include/c++/v1"; ' +
-  'cp -f "$1" "$2" "@LIBDIR@/"; ' +
-  'cp -R "' + libcxx_inc + '/." "@ROOT@/include/c++/v1/"; ' +
-  'rm -f "@ROOT@/include/c++/v1/__config_site.in" "@ROOT@/include/c++/v1/CMakeLists.txt"; ' +
-  'cp -f "' + (build_root / '__config_site') + '" "@ROOT@/include/c++/v1/__config_site"; ' +
-  'cp -f "' + (build_root / '__assertion_handler') + '" "@ROOT@/include/c++/v1/__assertion_handler"; ' +
-  'cp -f "' + libcxxabi_src / 'include' / 'cxxabi.h' + '" "@ROOT@/include/c++/v1/cxxabi.h"'
-)
+# The image does not stage libc++ (see the header above), so these targets are
+# the port's own deployment path: a manual run, and what the image will call once
+# a C++ consumer exists.  @LIBDIR@ is the image's lib dir for `stage` and the
+# package payload's lib/ for `pkg`: cactpkg installs a package under /usr, and
+# its default prefix /usr/local is not on ld.so's search path.
+_copy_tpl = 'set -e; mkdir -p "@LIBDIR@"; cp -f "$1" "$2" "@LIBDIR@/"'
 
 _pkg_dir = src_root / 'pkg' / 'libcxx'
 _pkg_repo = src_root / 'repo'
 
-_stage_copy = _copy_tpl.replace('@ROOT@', lr_lib).replace('@LIBDIR@', lr_lib)
-_pkg_copy   = _copy_tpl.replace('@ROOT@', _pkg_dir / 'payload') \
-                       .replace('@LIBDIR@', _pkg_dir / 'payload' / 'lib')
+_stage_copy = _copy_tpl.replace('@LIBDIR@', lr_lib)
+_pkg_copy   = _copy_tpl.replace('@LIBDIR@', _pkg_dir / 'payload' / 'lib')
 
 run_target('stage',
   command: [bash, '-c', _stage_copy, 'bash', libcxx_so, libcxxabi_so])
