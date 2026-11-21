@@ -193,6 +193,7 @@ cxx_sources = files(
   'libcxx/src/optional.cpp',
   'libcxx/src/ostream.cpp',
   'libcxx/src/print.cpp',
+  'libcxx/src/random.cpp',
   'libcxx/src/random_shuffle.cpp',
   'libcxx/src/regex.cpp',
   'libcxx/src/ryu/d2fixed.cpp',

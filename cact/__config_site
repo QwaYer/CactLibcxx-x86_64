@@ -49,9 +49,12 @@
 // (see PORTING-x86_64.md).
 #define _LIBCPP_HAS_FILESYSTEM 0
 
-// std::random_device reads /dev/urandom and needs a token/entropy interface
-// libc++ probes for; off until CactOS has the device node.
-#define _LIBCPP_HAS_RANDOM_DEVICE 0
+// std::random_device: on.  libc++ selects the DEV_RANDOM backend for a target
+// that is none of Apple/BSD/WASI/Fuchsia/Windows, which opens the token path
+// (default /dev/urandom) and reads it — CactOS registers /dev/urandom as a
+// character device (the kernel CSPRNG), so it works.  LLVM's ExponentialBackoff
+// uses std::random_device.  (src/random.cpp must be in the build for it.)
+#define _LIBCPP_HAS_RANDOM_DEVICE 1
 
 // Localization: on, but for the C locale only.  CactLibc has setlocale()/
 // localeconv()/newlocale() and the strto* and strftime the C locale needs, and
@@ -60,10 +63,12 @@
 // libc++'s <iostream> is built on, so this is what makes iostreams usable.
 #define _LIBCPP_HAS_LOCALIZATION 1
 
-// No wide characters and no Unicode conversions: CactLibc ships no <wchar.h>,
-// and the C locale's character set is single-byte.  <cwchar>/std::wstring are
-// then unavailable (guarded by _LIBCPP_IF_WIDE_CHARACTERS upstream).
-#define _LIBCPP_HAS_WIDE_CHARACTERS 0
+// Wide characters: on.  CactLibc now ships <wchar.h>/<wctype.h> (a C-locale
+// layer — see its PORTING notes), which is what libc++'s <cwchar> needs; the
+// absence of one was why this was 0.  LLVM and Mesa both use std::wstring.
+// Unicode conversions (std::wstring_convert, <codecvt>) stay off: CactOS's
+// character set is still the single-byte C locale's.
+#define _LIBCPP_HAS_WIDE_CHARACTERS 1
 #define _LIBCPP_HAS_UNICODE 0
 
 // The tz database (std::chrono::locate_zone) is a separate data installation;
