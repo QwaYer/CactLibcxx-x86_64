@@ -1,0 +1,54 @@
+/*
+ * Linker script for the CactOS shared C++ runtime libraries.
+ *
+ * Fixed base @base@ — the loader's library slab; the whole address map, and why
+ * a base is needed at all, is in CactLibc ldso/ldso.h.  CactOS maps every image
+ * at its link-time address (bias 0), so this base only has to be disjoint from
+ * every other image and below the kernel mmap window (0x80000000).
+ *
+ * Compared with libffi.ld / wayland.ld.in this adds the three sections C++
+ * brings: .init_array/.fini_array (global constructors and destructors — the
+ * loader runs them, see ld.so's init list) and .gcc_except_table (the tables
+ * clang emits even with exceptions disabled, because -fno-exceptions still
+ * leaves cleanups in the code).  They have to land inside the mapped image:
+ * an orphan section the linker places itself would sit outside the object's
+ * PT_LOAD span and never be mapped.
+ *
+ * The `.rela.*` names are the x86-64 ones; the `.rel.*` pair is kept so a
+ * relocatable built by an older toolchain lands in a named section rather than
+ * an orphan one.
+ */
+
+SECTIONS {
+    . = @base@;
+
+    .dynamic   : { *(.dynamic) }
+    .hash      : { *(.hash) }
+    .gnu.hash  : { *(.gnu.hash) }
+    .dynsym    : { *(.dynsym) }
+    .dynstr    : { *(.dynstr) }
+    .rela.dyn  : { *(.rela.dyn) }
+    .rela.plt  : { *(.rela.plt) }
+    .rel.dyn   : { *(.rel.dyn) }
+    .rel.plt   : { *(.rel.plt) }
+
+    .init      : { *(.init) }
+    .plt       : { *(.plt) }
+    .text      : { *(.text .text.*) }
+    .fini      : { *(.fini) }
+
+    .rodata    : { *(.rodata .rodata.*) }
+    .eh_frame  : { *(.eh_frame) }
+    .gcc_except_table : { *(.gcc_except_table .gcc_except_table.*) }
+
+    . = ALIGN(0x1000);
+    .data.rel.ro : { *(.data.rel.ro .data.rel.ro.*) }
+    /* KEEP so --gc-sections (a linking consumer's choice) cannot drop a
+     * constructor: nothing else references an init_array entry. */
+    .init_array : { KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*))) KEEP(*(.init_array)) }
+    .fini_array : { KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*))) KEEP(*(.fini_array)) }
+    .data      : { *(.data .data.*) }
+    .got       : { *(.got) }
+    .got.plt   : { *(.got.plt) }
+    .bss       : { *(.bss .bss.*) *(COMMON) }
+}

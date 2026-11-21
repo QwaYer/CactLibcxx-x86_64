@@ -1,0 +1,4 @@
+name: libcxx
+version: 23.1.5
+arch: x86_64
+description: libc++ and libc++abi, the C++ runtime (iostreams, containers, demangler) for CactOS

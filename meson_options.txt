@@ -1,0 +1,8 @@
+option('cactlib', type: 'string', value: '../CactLibc-x86_64',
+  description: 'CactLibc project root, relative to this repo or absolute')
+
+option('lr_lib', type: 'string', value: '../LocalRepoCactOS-x86_64/lib',
+  description: 'LocalRepo staging lib directory used by the stage target, relative or absolute')
+
+option('cpkg_py', type: 'string', value: '../CactPkg-x86_64/tools/cpkg.py',
+  description: 'CactPkg host tool (cpkg.py) used by the pkg target, relative or absolute')

@@ -122,6 +122,9 @@
 #    include <__locale_dir/support/fuchsia.h>
 #  elif _LIBCPP_LIBC_LLVM_LIBC
 #    include <__locale_dir/support/llvm_libc.h>
+#  elif defined(__CACT__)
+// CactOS — the port's single edit to an upstream file (see UPSTREAM.md).
+#    include <__locale_dir/support/cactos.h>
 #  elif defined(__linux__)
 #    include <__locale_dir/support/linux.h>
 #  elif _LIBCPP_LIBC_NEWLIB

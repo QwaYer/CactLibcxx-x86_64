@@ -1,0 +1,94 @@
+//===----------------------------------------------------------------------===//
+//
+// CactOS configuration site for libc++ — written by hand.
+//
+// Upstream generates this file (from include/__config_site.in) out of the
+// answers CMake probes on a hosted system; CactOS has no hosted C library to
+// probe, so the answers are written down here once.  This is the only place the
+// CactOS libc++ configuration lives.
+//
+// Every #cmakedefine01 line of the template is spelled out with its value:
+// features CactOS does not have are 0, not absent, so a header that tests
+// `#if _LIBCPP_HAS_FILESYSTEM` always sees a well-formed expression.  The two
+// #cmakedefine lines that upstream's own configuration always sets
+// (_LIBCPP_ABI_VERSION/_LIBCPP_ABI_NAMESPACE and the hardening/assertion
+// defaults) carry upstream's default values.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef _LIBCPP___CONFIG_SITE
+#define _LIBCPP___CONFIG_SITE
+
+// The inline ABI namespace: `std::__1`.  Version 1 is the ABI libc++ has always
+// had, and `__1` is what every libc++ build without LIBCXX_ABI_UNSTABLE uses.
+#define _LIBCPP_ABI_VERSION 1
+#define _LIBCPP_ABI_NAMESPACE __1
+#define _LIBCPP_ABI_FORCE_ITANIUM 0
+#define _LIBCPP_ABI_FORCE_MICROSOFT 0
+
+// Threads: CactLibc has a POSIX threads implementation (pthread.h), and the
+// pthread API is what libc++'s __libcpp_* thread layer is written against.
+#define _LIBCPP_HAS_THREADS 1
+#define _LIBCPP_HAS_MONOTONIC_CLOCK 1
+#define _LIBCPP_HAS_MUSL_LIBC 0
+#define _LIBCPP_HAS_THREAD_API_PTHREAD 1
+#define _LIBCPP_HAS_THREAD_API_EXTERNAL 0
+#define _LIBCPP_HAS_THREAD_API_WIN32 0
+#define _LIBCPP_HAS_THREAD_API_C11 0
+
+#define _LIBCPP_HAS_VENDOR_AVAILABILITY_ANNOTATIONS 0
+
+// libc++ carries its own ctype classification ("rune") table instead of asking
+// the C library for one.  Upstream turns this on for musl/llvm-libc/Bionic; it
+// is what CactOS needs too (there is no C-library table to read, and ctype.h
+// is CactLibc's), and without it <__locale> refuses to compile.
+#define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE
+
+// No std::filesystem: it wants statvfs(), readlink(), realpath() and friends
+// that CactLibc does not carry yet.  <filesystem> is then unusable, deliberately
+// (see PORTING-x86_64.md).
+#define _LIBCPP_HAS_FILESYSTEM 0
+
+// std::random_device reads /dev/urandom and needs a token/entropy interface
+// libc++ probes for; off until CactOS has the device node.
+#define _LIBCPP_HAS_RANDOM_DEVICE 0
+
+// Localization: on, but for the C locale only.  CactLibc has setlocale()/
+// localeconv()/newlocale() and the strto* and strftime the C locale needs, and
+// the __locale shim this port adds (include/__locale_dir/support/cactos.h)
+// takes libc++'s "no locale" path — see that header.  __locale_dir is what
+// libc++'s <iostream> is built on, so this is what makes iostreams usable.
+#define _LIBCPP_HAS_LOCALIZATION 1
+
+// No wide characters and no Unicode conversions: CactLibc ships no <wchar.h>,
+// and the C locale's character set is single-byte.  <cwchar>/std::wstring are
+// then unavailable (guarded by _LIBCPP_IF_WIDE_CHARACTERS upstream).
+#define _LIBCPP_HAS_WIDE_CHARACTERS 0
+#define _LIBCPP_HAS_UNICODE 0
+
+// The tz database (std::chrono::locate_zone) is a separate data installation;
+// CactOS's localtime() is UTC, so there is nothing to look up.
+#define _LIBCPP_HAS_TIME_ZONE_DATABASE 0
+
+#define _LIBCPP_INSTRUMENTED_WITH_ASAN 0
+
+// Parallel algorithms: the serial backend, so <execution>'s parallel policies
+// run in sequence.  Upstream's other two backends are the std::thread and
+// libdispatch ones; serial is the one that needs nothing new from CactLibc.
+#define _LIBCPP_PSTL_BACKEND_SERIAL
+
+// C libraries that are not CactLibc's.
+#define _LIBCPP_LIBC_PICOLIBC 0
+#define _LIBCPP_LIBC_NEWLIB 0
+#define _LIBCPP_LIBC_LLVM_LIBC 0
+
+// Upstream's defaults: hardening off (release), and the assertion semantic that
+// follows the hardening mode.  The values are the literals upstream's
+// CMakeLists.txt substitutes (2 == _LIBCPP_HARDENING_MODE_NONE, 2 ==
+// _LIBCPP_ASSERTION_SEMANTIC_HARDENING_DEPENDENT); the macro names are not
+// visible yet, because <__config> includes this file before
+// <__configuration/hardening.h>.
+#define _LIBCPP_HARDENING_MODE_DEFAULT 2
+#define _LIBCPP_ASSERTION_SEMANTIC_DEFAULT 2
+
+#endif // _LIBCPP___CONFIG_SITE
